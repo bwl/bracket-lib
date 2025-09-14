@@ -95,19 +95,17 @@ pub(crate) fn apply_all_batches(mut context: ResMut<BracketContext>) {
 }
 
 pub(crate) fn update_mouse_position(
-    wnds: Res<Windows>,
+    wnds: Query<&Window>,
     q_camera: Query<(&Camera, &GlobalTransform), With<BracketCamera>>,
     mut context: ResMut<BracketContext>,
     scaler: Res<ScreenScaler>,
 ) {
     // Modified from: https://bevy-cheatbook.github.io/cookbook/cursor2world.html
     // Bevy really needs a nicer way to do this
-    let (camera, camera_transform) = q_camera.single();
-    let wnd = if let RenderTarget::Window(id) = camera.target {
-        wnds.get(id)
-    } else {
-        wnds.get_primary()
+    let Ok((camera, camera_transform)) = q_camera.get_single() else {
+        return;
     };
+    let wnd = wnds.get_single().ok();
 
     let wnd = if let Some(wnd) = wnd {
         wnd
@@ -116,7 +114,7 @@ pub(crate) fn update_mouse_position(
     };
 
     if let Some(screen_pos) = wnd.cursor_position() {
-        let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+        let window_size = Vec2::new(wnd.width(), wnd.height());
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
         let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
