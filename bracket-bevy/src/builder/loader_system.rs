@@ -4,12 +4,11 @@ use crate::{
     TerminalLayer,
 };
 use bevy::{
-    math::Vec2,
     prelude::*,
     color::Color,
     image::ImageSampler,
     render::{
-        camera::{RenderTarget, ScalingMode, ImageRenderTarget, ClearColorConfig, ViewportOrigin},
+        camera::{RenderTarget, ScalingMode, ImageRenderTarget, ClearColorConfig},
         render_resource::{
             Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
@@ -76,15 +75,19 @@ pub(crate) fn load_terminals(
 
         // Create terminal camera that renders to the texture with exact pixel dimensions
         let image_target = ImageRenderTarget::from(render_target_handle.clone());
-        commands.spawn((
+        let terminal_camera = commands.spawn((
             Camera2d,
-            GlobalTransform::default(),
             Camera {
                 target: RenderTarget::Image(image_target),
                 order: 0,
                 hdr: false,
+                clear_color: ClearColorConfig::Custom(Color::BLACK),
+                ..default()
             },
-            OrthographicProjection {
+        )).id();
+
+        commands.entity(terminal_camera)
+            .insert(Projection::Orthographic(OrthographicProjection {
                 scale: 1.0,
                 scaling_mode: ScalingMode::Fixed {
                     width: 640.0,
@@ -92,32 +95,29 @@ pub(crate) fn load_terminals(
                 },
                 near: -1000.0,
                 far: 1000.0,
-                viewport_origin: ViewportOrigin::Center,
-                area: None,
-            },
-            ClearColorConfig::Custom(Color::BLACK),
-            TerminalCamera,
-            BracketCamera,
-        ));
+                ..OrthographicProjection::default_2d()
+            }))
+            .insert(TerminalCamera)
+            .insert(BracketCamera);
 
         // Create display camera that renders the texture to the window
-        commands.spawn((
+        let display_camera = commands.spawn((
             Camera2d,
-            GlobalTransform::default(),
             Camera::default(),
-            OrthographicProjection {
-                scale: 1.0,
+        )).id();
+
+        commands.entity(display_camera)
+            .insert(Projection::Orthographic(OrthographicProjection {
                 scaling_mode: ScalingMode::WindowSize,
                 near: -1000.0,
                 far: 1000.0,
-                viewport_origin: ViewportOrigin::Center,
-                area: None,
-            },
-            DisplayCamera,
-        ));
+                scale: 1.0,
+                ..OrthographicProjection::default_2d()
+            }))
+            .insert(DisplayCamera);
 
         // Store the terminal image handle as a resource
-        commands.insert_resource(TerminalImage(render_target_handle));
+        commands.insert_resource(TerminalImage(render_target_handle.clone()));
 
         Some((width, height, render_target_handle))
     } else {
@@ -181,18 +181,11 @@ pub(crate) fn load_terminals(
     }
 
     // Create display quad if we have a render target
-    if let Some((width, height, texture_handle)) = terminal_pixel_size {
-        // Spawn the display sprite using SpriteBundle
+    if let Some((_width, _height, texture_handle)) = terminal_pixel_size {
+        // Spawn the display sprite using Sprite::from_image
         commands.spawn((
-            SpriteBundle {
-                texture: texture_handle,
-                transform: Transform::from_xyz(0.0, 0.0, 0.0),
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(width, height)),
-                    ..default()
-                },
-                ..default()
-            },
+            Sprite::from_image(texture_handle),
+            Transform::from_xyz(0.0, 0.0, 0.0),
             DisplaySprite,
         ));
     }
