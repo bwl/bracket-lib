@@ -168,12 +168,36 @@ impl BTermBuilder {
         self
     }
 
+    pub fn with_simple_console_no_bg(mut self, font_index: usize, width: i32, height: i32) -> Self {
+        let mut features = HashSet::new();
+        features.insert(crate::SimpleConsoleFeatures::WithoutBackground);
+        self.layers.push(TerminalLayer::Simple {
+            font_index,
+            width,
+            height,
+            features,
+        });
+        self
+    }
+
     pub fn with_sparse_console(mut self, font_index: usize, width: i32, height: i32) -> Self {
         self.layers.push(TerminalLayer::Sparse {
             font_index,
             width,
             height,
             features: HashSet::new(),
+        });
+        self
+    }
+
+    pub fn with_sparse_console_no_bg(mut self, font_index: usize, width: i32, height: i32) -> Self {
+        let mut features = HashSet::new();
+        features.insert(crate::SparseConsoleFeatures::WithoutBackground);
+        self.layers.push(TerminalLayer::Sparse {
+            font_index,
+            width,
+            height,
+            features,
         });
         self
     }
