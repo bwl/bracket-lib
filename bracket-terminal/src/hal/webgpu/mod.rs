@@ -12,7 +12,7 @@ mod backend;
 pub use backend::*;
 mod mainloop;
 pub use mainloop::*;
-pub use winit::event::VirtualKeyCode;
+// VirtualKeyCode is now provided by the parent hal module
 mod backing;
 pub(crate) use backing::*;
 mod framebuffer;

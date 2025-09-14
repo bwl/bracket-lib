@@ -27,11 +27,18 @@ pub(crate) struct SimpleConsole {
 
 impl SimpleConsole {
     pub fn new(font_index: usize, width: i32, height: i32) -> Self {
+        let mut terminal = vec![TerminalGlyph::default(); (width * height) as usize];
+        // Explicitly initialize all glyphs to spaces with black background
+        for glyph in terminal.iter_mut() {
+            glyph.glyph = 32;
+            glyph.background = [0.0, 0.0, 0.0, 1.0];
+            glyph.foreground = [1.0, 1.0, 1.0, 1.0];
+        }
         Self {
             font_index,
             width,
             height,
-            terminal: vec![TerminalGlyph::default(); (width * height) as usize],
+            terminal,
             back_end: None,
             clipping: None,
             mouse_chars: (0, 0),
@@ -122,13 +129,22 @@ impl ConsoleFrontEnd for SimpleConsole {
     fn cls(&mut self) {
         self.terminal
             .iter_mut()
-            .for_each(|c| *c = TerminalGlyph::default());
+            .for_each(|c| {
+                c.glyph = 32; // Space character
+                c.foreground = [1.0, 1.0, 1.0, 1.0]; // White
+                c.background = [0.0, 0.0, 0.0, 1.0]; // Opaque black
+            });
     }
 
     fn cls_bg(&mut self, color: RGBA) {
+        let bg = color.as_rgba_f32();
         self.terminal
             .iter_mut()
-            .for_each(|c| c.background = color.as_rgba_f32());
+            .for_each(|c| {
+                c.glyph = 32; // Space character
+                c.foreground = [1.0, 1.0, 1.0, 1.0];
+                c.background = bg;
+            });
     }
 
     fn set(&mut self, x: i32, y: i32, fg: RGBA, bg: RGBA, glyph: FontCharType) {

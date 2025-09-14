@@ -37,23 +37,11 @@ pub mod prelude {
     pub use bracket_geometry::prelude::*;
     pub type BError = std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-    #[cfg(all(feature = "opengl", not(target_arch = "wasm32")))]
-    pub use glutin::event::VirtualKeyCode;
-
-    #[cfg(all(feature = "webgpu", not(feature = "opengl")))]
+    // Use our custom VirtualKeyCode for all backends
     pub use crate::hal::VirtualKeyCode;
 
     #[cfg(all(feature = "opengl", not(target_arch = "wasm32")))]
     pub use crate::hal::GlCallback;
-
-    #[cfg(target_arch = "wasm32")]
-    pub use crate::hal::VirtualKeyCode;
-
-    #[cfg(feature = "curses")]
-    pub use crate::hal::VirtualKeyCode;
-
-    #[cfg(feature = "crossterm")]
-    pub use crate::hal::VirtualKeyCode;
 }
 
 #[macro_export]

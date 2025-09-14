@@ -47,15 +47,19 @@ unsafe impl Send for PlatformGL {}
 unsafe impl Sync for PlatformGL {}
 
 pub struct WrappedContext {
-    pub el: glutin::event_loop::EventLoop<()>,
-    pub wc: glutin::WindowedContext<glutin::PossiblyCurrent>,
+    pub el: winit::event_loop::EventLoop<()>,
+    pub window: std::rc::Rc<winit::window::Window>,
+    pub gl_context: glutin::context::PossiblyCurrentContext,
+    pub gl_surface: glutin::surface::Surface<glutin::surface::WindowSurface>,
+    pub gl_display: glutin::display::Display,
 }
 
 pub struct InitHints {
     pub vsync: bool,
     pub fullscreen: bool,
-    pub gl_version: glutin::GlRequest,
-    pub gl_profile: glutin::GlProfile,
+    pub opengl_major: u8,
+    pub opengl_minor: u8,
+    pub opengl_core: bool,
     pub hardware_acceleration: bool,
     pub srgb: bool,
     pub frame_sleep_time: Option<f32>,
@@ -69,8 +73,9 @@ impl InitHints {
         Self {
             vsync: false,
             fullscreen: false,
-            gl_version: glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 2)),
-            gl_profile: glutin::GlProfile::Core,
+            opengl_major: 3,
+            opengl_minor: 2,
+            opengl_core: true,
             hardware_acceleration: false,
             srgb: true,
             frame_sleep_time: None,
@@ -86,8 +91,9 @@ impl Default for InitHints {
         Self {
             vsync: false,
             fullscreen: false,
-            gl_version: glutin::GlRequest::Specific(glutin::Api::OpenGl, (3, 2)),
-            gl_profile: glutin::GlProfile::Core,
+            opengl_major: 3,
+            opengl_minor: 2,
+            opengl_core: true,
             hardware_acceleration: false,
             srgb: true,
             frame_sleep_time: None,

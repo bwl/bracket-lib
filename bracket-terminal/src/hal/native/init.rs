@@ -5,7 +5,15 @@ use crate::hal::{setup_quad, Framebuffer, Shader};
 use crate::prelude::{BTerm, InitHints, BACKEND_INTERNAL};
 use crate::BResult;
 use glow::HasContext;
-use glutin::{event_loop::EventLoop, window::WindowBuilder, ContextBuilder};
+use glutin::config::ConfigTemplateBuilder;
+use glutin::context::{ContextAttributesBuilder, PossiblyCurrentContext};
+use glutin::display::GetGlDisplay;
+use glutin::prelude::*;
+use glutin::surface::{Surface, WindowSurface};
+use glutin_winit::DisplayBuilder;
+use raw_window_handle::HasRawWindowHandle;
+use winit::event_loop::EventLoop;
+use winit::window::Window;
 
 pub fn init_raw<S: ToString>(
     width_pixels: u32,
@@ -14,36 +22,101 @@ pub fn init_raw<S: ToString>(
     platform_hints: InitHints,
 ) -> BResult<BTerm> {
     let mut scaler = ScreenScaler::new(platform_hints.desired_gutter, width_pixels, height_pixels);
-    let el = EventLoop::new();
+    let el = EventLoop::new().map_err(|e| format!("Failed to create event loop: {}", e))?;
     let window_size = scaler.new_window_size();
-    let window_size = glutin::dpi::LogicalSize::new(window_size.width, window_size.height);
-    let wb = WindowBuilder::new()
+    let window_size = winit::dpi::LogicalSize::new(window_size.width, window_size.height);
+
+    let window_attributes = Window::default_attributes()
         .with_title(window_title.to_string())
         .with_resizable(platform_hints.fitscreen)
         .with_min_inner_size(window_size)
         .with_inner_size(window_size);
-    let windowed_context = ContextBuilder::new()
-        .with_gl(platform_hints.gl_version)
-        .with_gl_profile(platform_hints.gl_profile)
-        .with_hardware_acceleration(Some(true))
-        .with_vsync(platform_hints.vsync)
-        .with_srgb(platform_hints.srgb)
-        .build_windowed(wb, &el)?;
-    let windowed_context = unsafe { windowed_context.make_current().unwrap() };
+
+    // Create config template for OpenGL
+    let template_builder = ConfigTemplateBuilder::new()
+        .with_alpha_size(8)
+        .prefer_hardware_accelerated(Some(true))
+        .with_transparency(false);
+
+    // Use DisplayBuilder the simple way - it creates both display and window
+    let (window, gl_config) = DisplayBuilder::new()
+        .with_window_attributes(Some(window_attributes))
+        .build(&el, template_builder, |configs| {
+            configs
+                .reduce(|accum, config| {
+                    let transparency_check =
+                        config.supports_transparency().unwrap_or(false) == false;
+                    let accumulate =
+                        accum.num_samples() < config.num_samples() && transparency_check;
+                    if accumulate {
+                        config
+                    } else {
+                        accum
+                    }
+                })
+                .unwrap()
+        })
+        .map_err(|e| format!("Failed to build display: {}", e))?;
+
+    let window = std::rc::Rc::new(window.ok_or("Failed to create window")?);
+
+    // Get the display from the config
+    let gl_display = gl_config.display();
+    let raw_window_handle = window
+        .raw_window_handle()
+        .map_err(|e| format!("Failed to get raw window handle: {}", e))?;
+    let context_attributes = ContextAttributesBuilder::new()
+        .with_context_api(glutin::context::ContextApi::OpenGl(Some(
+            glutin::context::Version::new(platform_hints.opengl_major, platform_hints.opengl_minor),
+        )))
+        .with_profile(if platform_hints.opengl_core {
+            glutin::context::GlProfile::Core
+        } else {
+            glutin::context::GlProfile::Compatibility
+        })
+        .build(Some(raw_window_handle));
+
+    let gl_context = unsafe {
+        gl_display
+            .create_context(&gl_config, &context_attributes)
+            .map_err(|e| format!("Failed to create GL context: {}", e))?
+    };
+
+    // Create surface
+    let (width, height): (u32, u32) = window.inner_size().into();
+    let raw_window_handle_surface = window
+        .raw_window_handle()
+        .map_err(|e| format!("Failed to get raw window handle for surface: {}", e))?;
+    let attrs = glutin::surface::SurfaceAttributesBuilder::<glutin::surface::WindowSurface>::new()
+        .build(
+            raw_window_handle_surface,
+            std::num::NonZeroU32::new(width).unwrap(),
+            std::num::NonZeroU32::new(height).unwrap(),
+        );
+
+    let gl_surface = unsafe {
+        gl_display
+            .create_window_surface(&gl_config, &attrs)
+            .map_err(|e| format!("Failed to create surface: {}", e))?
+    };
+
+    // Make context current
+    let gl_context = gl_context
+        .make_current(&gl_surface)
+        .map_err(|e| format!("Failed to make context current: {}", e))?;
 
     if platform_hints.fullscreen {
-        if let Some(mh) = el.available_monitors().next() {
-            windowed_context
-                .window()
-                .set_fullscreen(Some(glutin::window::Fullscreen::Borderless(Some(mh))));
+        if let Some(mh) = window.available_monitors().next() {
+            window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(mh))));
         } else {
             return Err("No available monitor found".into());
         }
     }
 
     let gl = unsafe {
-        glow::Context::from_loader_function(|ptr| {
-            windowed_context.get_proc_address(ptr) as *const _
+        glow::Context::from_loader_function(|s| {
+            let c_str = std::ffi::CString::new(s).unwrap();
+            gl_display.get_proc_address(&c_str) as *const _
         })
     };
 
@@ -92,7 +165,7 @@ pub fn init_raw<S: ToString>(
     ));
 
     // Build the backing frame-buffer
-    let initial_dpi_factor = windowed_context.window().scale_factor();
+    let initial_dpi_factor = window.scale_factor();
     scaler.change_logical_size(width_pixels, height_pixels, initial_dpi_factor as f32);
     let backing_fbo = Framebuffer::build_fbo(
         &gl,
@@ -108,7 +181,10 @@ pub fn init_raw<S: ToString>(
     be.quad_vao = Some(quad_vao);
     be.context_wrapper = Some(WrappedContext {
         el,
-        wc: windowed_context,
+        window: window.clone(),
+        gl_context,
+        gl_surface,
+        gl_display,
     });
     be.backing_buffer = Some(backing_fbo);
     be.frame_sleep_time = crate::hal::convert_fps_to_wait(platform_hints.frame_sleep_time);

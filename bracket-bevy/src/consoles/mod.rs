@@ -17,6 +17,8 @@ mod virtual_console;
 pub use virtual_console::*;
 mod draw_batch;
 pub use draw_batch::*;
+mod letterbox_scale_system;
+pub use letterbox_scale_system::*;
 
 pub(crate) trait ConsoleFrontEnd: Sync + Send {
     fn get_char_size(&self) -> (i32, i32);
@@ -108,6 +110,7 @@ pub(crate) trait ConsoleFrontEnd: Sync + Send {
     );
 
     /// Sets ALL tiles foreground alpha (only tiles that exist, in sparse consoles).
+    #[allow(dead_code)]
     fn set_all_fg_alpha(&mut self, alpha: f32);
 
     /// Sets ALL tiles background alpha (only tiles that exist, in sparse consoles).
@@ -127,6 +130,7 @@ pub(crate) trait ConsoleFrontEnd: Sync + Send {
 
     fn get_mouse_position_for_current_layer(&self) -> Point;
     fn set_mouse_position(&mut self, position: (f32, f32), scaler: &ScreenScaler);
+    #[allow(dead_code)]
     fn get_font_index(&self) -> usize;
 }
 

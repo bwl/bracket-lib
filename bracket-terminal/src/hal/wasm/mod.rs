@@ -1,4 +1,4 @@
-pub use winit::event::VirtualKeyCode;
+// VirtualKeyCode is now provided by the parent hal module
 mod init;
 pub mod shader_strings;
 pub use init::*;

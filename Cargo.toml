@@ -23,7 +23,6 @@ exclude = [
     "screenshots"
 ]
 resolver = "2" # Enables the new Cargo resolution engine
-incremental = false # Causing issues with Windows builds
 
 [features]
 default = [ "opengl" ]
@@ -45,17 +44,17 @@ bracket-pathfinding = { path = "./bracket-pathfinding", version = "~0.8" }
 bracket-random = { path = "./bracket-random", version = "~0.8", features = [ "parsing" ] }
 bracket-terminal = { path = "./bracket-terminal", version = "~0.8", default-features = false }
 
-[workspace]
-members = [
-    "bracket-algorithm-traits",
-    "bracket-color",
-    "bracket-geometry",
-    "bracket-noise",
-    "bracket-pathfinding",
-    "bracket-random",
-    "bracket-terminal",
-    "rltk",
-    "bracket-rex",
-    "bracket-embedding",
-    "bracket-bevy",
-]
+# [workspace] - Commented out to allow inclusion in parent workspace
+# members = [
+#     "bracket-algorithm-traits",
+#     "bracket-color",
+#     "bracket-geometry",
+#     "bracket-noise",
+#     "bracket-pathfinding",
+#     "bracket-random",
+#     "bracket-terminal",
+#     "rltk",
+#     "bracket-rex",
+#     "bracket-embedding",
+#     "bracket-bevy",
+# ]

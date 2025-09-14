@@ -1,22 +1,22 @@
 use crate::{
     consoles::{
-        apply_all_batches, default_gutter_size, replace_meshes, update_mouse_position,
-        update_timing, window_resize, ScreenScaler,
+        apply_all_batches, default_gutter_size, letterbox_scale_system, replace_meshes,
+        update_mouse_position, update_timing, window_resize, ScreenScaler,
     },
     fix_images, load_terminals, update_consoles, RandomNumbers, TerminalBuilderFont, TerminalLayer,
 };
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::{Plugin, Resource, Update, Startup, Last},
-    utils::HashMap,
+    prelude::{Last, Plugin, Resource, Startup, Update},
 };
 use bracket_color::prelude::RGBA;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerminalScalingMode {
     Stretch,
     ResizeTerminals,
+    PixelPerfect,
 }
 
 #[derive(Clone, Resource)]
@@ -43,7 +43,7 @@ impl BTermBuilder {
             with_random_number_generator: false,
             with_diagnostics: true,
             log_diagnostics: false,
-            scaling_mode: TerminalScalingMode::Stretch,
+            scaling_mode: TerminalScalingMode::PixelPerfect,
             gutter: default_gutter_size(),
             auto_apply_batches: true,
         }
@@ -68,7 +68,7 @@ impl BTermBuilder {
             with_random_number_generator: false,
             with_diagnostics: true,
             log_diagnostics: false,
-            scaling_mode: TerminalScalingMode::Stretch,
+            scaling_mode: TerminalScalingMode::PixelPerfect,
             gutter: default_gutter_size(),
             auto_apply_batches: true,
         }
@@ -76,6 +76,11 @@ impl BTermBuilder {
 
     pub fn with_scaling_mode(mut self, scaling_mode: TerminalScalingMode) -> Self {
         self.scaling_mode = scaling_mode;
+        self
+    }
+
+    pub fn with_pixel_perfect_scaling(mut self) -> Self {
+        self.scaling_mode = TerminalScalingMode::PixelPerfect;
         self
     }
 
@@ -176,9 +181,9 @@ impl BTermBuilder {
 
 impl Plugin for BTermBuilder {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.insert_resource(bevy::prelude::Msaa::Sample4);
+        // MSAA is no longer a resource in Bevy 0.16, it's configured per camera
         if self.with_diagnostics {
-            app.add_plugins(FrameTimeDiagnosticsPlugin);
+            app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
         if self.log_diagnostics {
             app.add_plugins(LogDiagnosticsPlugin::default());
@@ -192,7 +197,15 @@ impl Plugin for BTermBuilder {
         if self.auto_apply_batches {
             app.add_systems(Update, apply_all_batches);
         }
-        app.add_systems(Update, (update_consoles, replace_meshes, window_resize));
+        app.add_systems(
+            Update,
+            (
+                update_consoles,
+                replace_meshes,
+                window_resize,
+                letterbox_scale_system
+            )
+        );
         app.add_systems(Last, fix_images);
         if self.with_random_number_generator {
             app.insert_resource(RandomNumbers::new());

@@ -2,8 +2,11 @@ use super::SparseConsoleBackend;
 use crate::consoles::{scaler::FontScaler, BracketMesh, ScreenScaler, SparseConsole};
 use bevy::{
     prelude::*,
-    render::mesh::{Indices, PrimitiveTopology},
-    sprite::MaterialMesh2dBundle,
+    render::{
+        mesh::{Indices, Mesh2d, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+    },
+    sprite::MeshMaterial2d,
 };
 
 pub(crate) struct SparseBackendWithBackground {
@@ -45,7 +48,7 @@ impl SparseBackendWithBackground {
         let mut colors: Vec<[f32; 4]> = Vec::with_capacity(n_elements * 8);
         let mut indices: Vec<u32> = Vec::with_capacity(n_elements * 12);
         let mut index_count = 0;
-        let scale = screen_scaler.calc_step(self.width, self.height);
+        let scale = screen_scaler.calc_step(self.width, self.height, self.font_height_pixels);
         let top_left = screen_scaler.top_left();
 
         for (x, y, chr) in parent.terminal.iter() {
@@ -114,12 +117,15 @@ impl SparseBackendWithBackground {
             index_count += 4;
         }
 
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::RENDER_WORLD,
+        );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh.insert_indices(Indices::U32(indices));
         mesh
     }
 }
@@ -136,14 +142,12 @@ impl SparseConsoleBackend for SparseBackendWithBackground {
 
     fn spawn(&self, commands: &mut Commands, material: Handle<ColorMaterial>, idx: usize) {
         if let Some(mesh_handle) = &self.mesh_handle {
-            commands
-                .spawn(MaterialMesh2dBundle {
-                    mesh: mesh_handle.clone().into(),
-                    transform: Transform::default(),
-                    material,
-                    ..default()
-                })
-                .insert(BracketMesh(idx));
+            commands.spawn((
+                Mesh2d(mesh_handle.clone()),
+                MeshMaterial2d(material),
+                Transform::default(),
+                BracketMesh(idx),
+            ));
         }
     }
 
