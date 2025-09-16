@@ -103,7 +103,10 @@ pub(crate) fn load_terminals(
         // Create display camera that renders the texture to the window
         let display_camera = commands.spawn((
             Camera2d,
-            Camera::default(),
+            Camera {
+                hdr: true, // Enable HDR for bloom post-processing effects
+                ..default()
+            },
         )).id();
 
         commands.entity(display_camera)
