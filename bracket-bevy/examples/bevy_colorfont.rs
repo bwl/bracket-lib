@@ -8,8 +8,9 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(bracket)
-        .add_system(tick)
+        .add_plugins(ImagePlugin::default_nearest())
+        .add_plugins(bracket)
+        .add_systems(Update, tick)
         .run();
 }
 

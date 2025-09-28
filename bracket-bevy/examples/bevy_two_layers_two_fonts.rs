@@ -12,14 +12,22 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(bterm)
-        .insert_resource(Bouncer(0))
-        .add_system(tick)
+        .add_plugins(bterm)
+        .insert_resource(Bouncer {
+            position: 0,
+            frame_counter: 0,
+            previous_position: -1,
+        })
+        .add_systems(Update, tick)
         .run();
 }
 
 #[derive(Resource)]
-struct Bouncer(i32);
+struct Bouncer {
+    position: i32,
+    frame_counter: i32,
+    previous_position: i32,
+}
 
 fn tick(ctx: Res<BracketContext>, mut bouncer: ResMut<Bouncer>) {
     ctx.set_active_console(0);
@@ -28,10 +36,19 @@ fn tick(ctx: Res<BracketContext>, mut bouncer: ResMut<Bouncer>) {
     ctx.print_color(1, 2, "Now in color!", GREEN, NAVY);
 
     ctx.set_active_console(1);
-    ctx.cls();
+
+    // Only clear and redraw when we actually move position
+    bouncer.frame_counter += 1;
+    if bouncer.frame_counter >= 10 {
+        bouncer.frame_counter = 0;
+        ctx.cls(); // Clear only when moving
+        bouncer.position += 1;
+        bouncer.position %= 25;
+    }
+
     ctx.print_color(
         1,
-        bouncer.0,
+        bouncer.position,
         format!(
             "Frames per Second: {}, {} ms per frame",
             ctx.fps, ctx.frame_time_ms
@@ -39,6 +56,4 @@ fn tick(ctx: Res<BracketContext>, mut bouncer: ResMut<Bouncer>) {
         RED,
         WHITE,
     );
-    bouncer.0 += 1;
-    bouncer.0 %= 25;
 }

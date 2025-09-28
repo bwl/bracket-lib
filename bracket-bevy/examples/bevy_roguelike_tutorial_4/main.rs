@@ -1,3 +1,4 @@
+use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bracket_bevy::prelude::*;
 use std::cmp::{max, min};
@@ -9,14 +10,13 @@ pub use map::*;
 mod player;
 pub use player::*;
 mod rect;
-pub use rect::*;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(BTermBuilder::simple_80x50().with_random_number_generator(true))
-        .add_startup_system(setup)
-        .add_system(tick)
+        .add_plugins(BTermBuilder::simple_80x50().with_random_number_generator(true))
+        .add_systems(Startup, setup)
+        .add_systems(Update, tick)
         .run();
 }
 
@@ -41,7 +41,7 @@ fn setup(mut commands: Commands, rng: Res<RandomNumbers>) {
 fn tick(
     ctx: Res<BracketContext>,
     map: Res<Map>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut queries: ParamSet<(
         Query<&mut Position, With<Player>>,
         Query<(&Position, &Renderable)>,
@@ -52,7 +52,9 @@ fn tick(
     let delta = player_input(&keyboard);
     if delta != (0, 0) {
         let mut player_query = queries.p0();
-        let mut pos = player_query.single_mut();
+        let mut pos = player_query
+            .single_mut()
+            .expect("player entity should exist");
         let destination_idx = xy_idx(pos.x + delta.0, pos.y + delta.1);
         if map.0[destination_idx] != TileType::Wall {
             pos.x = min(79, max(0, pos.x + delta.0));

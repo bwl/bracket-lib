@@ -1,10 +1,8 @@
 use crate::{BracketCamera, BracketContext, TerminalScalingMode};
 use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    ecs::event::Events,
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    render::camera::RenderTarget,
-    sprite::Mesh2dHandle,
+    render::mesh::Mesh2d,
     window::WindowResized,
 };
 
@@ -13,10 +11,10 @@ use super::{BracketMesh, ScreenScaler};
 pub(crate) fn update_consoles(
     mut ctx: ResMut<BracketContext>,
     mut meshes: ResMut<Assets<Mesh>>,
-    find_mesh: Query<(&BracketMesh, &Mesh2dHandle)>,
+    find_mesh: Query<(&BracketMesh, &Mesh2d)>,
     scaler: Res<ScreenScaler>,
 ) {
-    let mut new_meshes: Vec<(Mesh2dHandle, Mesh2dHandle, bool)> = Vec::new();
+    let mut new_meshes: Vec<(Mesh2d, Mesh2d, bool)> = Vec::new();
     {
         let mut terms = ctx.terminals.lock();
         for (id, handle) in find_mesh.iter() {
@@ -38,17 +36,17 @@ pub(crate) fn replace_meshes(
     mut ctx: ResMut<BracketContext>,
     mut ev_asset: EventReader<AssetEvent<Mesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut update_mesh: Query<&mut Mesh2dHandle, With<BracketMesh>>,
+    mut update_mesh: Query<&mut Mesh2d, With<BracketMesh>>,
 ) {
-    for ev in ev_asset.iter() {
-        if let AssetEvent::Created { handle } = ev {
+    for ev in ev_asset.read() {
+        if let AssetEvent::Added { id } = ev {
             for (old, new, done) in ctx.mesh_replacement.iter_mut() {
-                if handle.id() == new.0.id() {
-                    update_mesh.for_each_mut(|mut m| {
+                if *id == new.0.id() {
+                    for mut m in &mut update_mesh {
                         if old.0.id() == m.0.id() {
                             *m = new.clone();
                         }
-                    });
+                    }
                     *done = true;
                 }
             }
@@ -56,19 +54,19 @@ pub(crate) fn replace_meshes(
     }
 
     for (old, _, _) in ctx.mesh_replacement.iter().filter(|(_, _, done)| *done) {
-        meshes.remove(old.0.clone());
+        meshes.remove(old.0.id());
     }
     ctx.mesh_replacement.retain(|(_, _, done)| !done);
 }
 
-pub(crate) fn update_timing(mut ctx: ResMut<BracketContext>, diagnostics: Res<Diagnostics>) {
-    if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+pub(crate) fn update_timing(mut ctx: ResMut<BracketContext>, diagnostics: Res<DiagnosticsStore>) {
+    if let Some(fps_diagnostic) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
         if let Some(fps_avg) = fps_diagnostic.measurement() {
             ctx.fps = fps_avg.value.round();
         }
     }
 
-    if let Some(frame_time) = diagnostics.get(FrameTimeDiagnosticsPlugin::FRAME_TIME) {
+    if let Some(frame_time) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FRAME_TIME) {
         if let Some(frame_time_avg) = frame_time.measurement() {
             ctx.frame_time_ms = (frame_time_avg.value * 1000.0).round();
         }
@@ -77,16 +75,19 @@ pub(crate) fn update_timing(mut ctx: ResMut<BracketContext>, diagnostics: Res<Di
 
 pub(crate) fn window_resize(
     mut context: ResMut<BracketContext>,
-    resize_event: Res<Events<WindowResized>>,
+    mut resize_event: EventReader<WindowResized>,
     mut scaler: ResMut<ScreenScaler>,
 ) {
-    let mut reader = resize_event.get_reader();
-    for e in reader.iter(&resize_event) {
+    for e in resize_event.read() {
         scaler.set_screen_size(e.width, e.height);
         if let TerminalScalingMode::ResizeTerminals = context.scaling_mode {
             context.resize_terminals(&scaler);
         }
-        scaler.recalculate(context.get_pixel_size(), context.largest_font());
+        scaler.recalculate(
+            context.get_pixel_size(),
+            context.largest_font(),
+            context.scaling_mode,
+        );
     }
 }
 
@@ -102,10 +103,10 @@ pub(crate) fn update_mouse_position(
 ) {
     // Modified from: https://bevy-cheatbook.github.io/cookbook/cursor2world.html
     // Bevy really needs a nicer way to do this
-    let Ok((camera, camera_transform)) = q_camera.get_single() else {
+    let Ok((camera, camera_transform)) = q_camera.single() else {
         return;
     };
-    let wnd = wnds.get_single().ok();
+    let wnd = wnds.single().ok();
 
     let wnd = if let Some(wnd) = wnd {
         wnd
@@ -116,7 +117,7 @@ pub(crate) fn update_mouse_position(
     if let Some(screen_pos) = wnd.cursor_position() {
         let window_size = Vec2::new(wnd.width(), wnd.height());
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
+        let ndc_to_world = camera_transform.compute_matrix() * camera.clip_from_view().inverse();
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
         let world_pos: Vec2 = world_pos.truncate();
 

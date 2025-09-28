@@ -2,12 +2,7 @@ use crate::{
     consoles::SparseConsole, fonts::FontStore, BTermBuilder, BracketContext, SimpleConsole,
     TerminalLayer,
 };
-use bevy::{
-    prelude::{
-        AssetServer, Assets, Camera2dBundle, Commands, Component, HandleUntyped, Mesh, Res, ResMut,
-    },
-    sprite::ColorMaterial,
-};
+use bevy::{asset::UntypedHandle, prelude::*, sprite::ColorMaterial};
 
 use super::image_fixer::ImagesToLoad;
 
@@ -23,20 +18,24 @@ pub(crate) fn load_terminals(
 ) {
     if context.with_ortho_camera {
         commands
-            .spawn(Camera2dBundle::default())
+            .spawn((
+                Camera2d,
+                Camera {
+                    order: 100,
+                    ..default()
+                },
+            ))
             .insert(BracketCamera);
     }
 
-    // Setup the new context
     let mut new_context = BracketContext::new(context.palette.clone());
     new_context.scaling_mode = context.scaling_mode;
 
-    // Load the fonts
-    let mut texture_handles = Vec::<HandleUntyped>::new();
+    let mut texture_handles = Vec::<UntypedHandle>::new();
     for font in context.fonts.iter() {
-        let texture_handle = asset_server.load(&font.filename);
+        let texture_handle: Handle<Image> = asset_server.load(&font.filename);
         let material_handle = materials.add(ColorMaterial::from(texture_handle.clone()));
-        texture_handles.push(texture_handle.clone_untyped());
+        texture_handles.push(texture_handle.clone().untyped());
         new_context.fonts.push(FontStore::new(
             texture_handle,
             material_handle,
@@ -47,7 +46,6 @@ pub(crate) fn load_terminals(
     }
     commands.insert_resource(ImagesToLoad(texture_handles));
 
-    // Setup the consoles
     for (idx, terminal) in context.layers.iter().enumerate() {
         match terminal {
             TerminalLayer::Simple {
@@ -83,7 +81,6 @@ pub(crate) fn load_terminals(
         }
     }
 
-    // Clean up after the building process
     commands.remove_resource::<BTermBuilder>();
     commands.insert_resource(new_context);
 }

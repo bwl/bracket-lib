@@ -1,5 +1,5 @@
 use bevy::prelude::Resource;
-use bracket_random::prelude::RandomNumberGenerator;
+use bracket_random::prelude::{DiceParseError, DiceType, RandomNumberGenerator};
 use parking_lot::Mutex;
 
 #[derive(Resource)]
@@ -50,13 +50,11 @@ impl RandomNumbers {
     }
 
     /// Rolls dice based on a DiceType struct, including application of the bonus
-    #[cfg(feature = "parsing")]
     pub fn roll(&self, dice: DiceType) -> i32 {
-        self.rng.lock().roll_dice(dice)
+        self.rng.lock().roll_dice(dice.n_dice, dice.die_type) + dice.bonus
     }
 
     /// Rolls dice based on passing in a string, such as roll_str("1d12")
-    #[cfg(feature = "parsing")]
     pub fn roll_str<S: ToString>(&self, dice: S) -> Result<i32, DiceParseError> {
         self.rng.lock().roll_str(dice)
     }

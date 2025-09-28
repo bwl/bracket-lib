@@ -1,6 +1,6 @@
 use parking_lot::Mutex;
 
-pub use winit::event::VirtualKeyCode;
+// VirtualKeyCode is now provided by the parent hal module
 
 mod main_loop;
 pub use main_loop::*;

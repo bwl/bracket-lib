@@ -7,16 +7,16 @@ use crate::{
 };
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::{Plugin, Resource, Update, Startup, Last},
-    utils::HashMap,
+    prelude::{Last, Plugin, Resource, Startup, Update},
 };
 use bracket_color::prelude::RGBA;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerminalScalingMode {
     Stretch,
     ResizeTerminals,
+    PixelPerfect,
 }
 
 #[derive(Clone, Resource)]
@@ -43,7 +43,7 @@ impl BTermBuilder {
             with_random_number_generator: false,
             with_diagnostics: true,
             log_diagnostics: false,
-            scaling_mode: TerminalScalingMode::Stretch,
+            scaling_mode: TerminalScalingMode::PixelPerfect,
             gutter: default_gutter_size(),
             auto_apply_batches: true,
         }
@@ -68,7 +68,7 @@ impl BTermBuilder {
             with_random_number_generator: false,
             with_diagnostics: true,
             log_diagnostics: false,
-            scaling_mode: TerminalScalingMode::Stretch,
+            scaling_mode: TerminalScalingMode::PixelPerfect,
             gutter: default_gutter_size(),
             auto_apply_batches: true,
         }
@@ -76,6 +76,11 @@ impl BTermBuilder {
 
     pub fn with_scaling_mode(mut self, scaling_mode: TerminalScalingMode) -> Self {
         self.scaling_mode = scaling_mode;
+        self
+    }
+
+    pub fn with_pixel_perfect_scaling(mut self) -> Self {
+        self.scaling_mode = TerminalScalingMode::PixelPerfect;
         self
     }
 
@@ -163,6 +168,18 @@ impl BTermBuilder {
         self
     }
 
+    pub fn with_simple_console_no_bg(mut self, font_index: usize, width: i32, height: i32) -> Self {
+        let mut features = HashSet::new();
+        features.insert(crate::SimpleConsoleFeatures::WithoutBackground);
+        self.layers.push(TerminalLayer::Simple {
+            font_index,
+            width,
+            height,
+            features,
+        });
+        self
+    }
+
     pub fn with_sparse_console(mut self, font_index: usize, width: i32, height: i32) -> Self {
         self.layers.push(TerminalLayer::Sparse {
             font_index,
@@ -172,13 +189,25 @@ impl BTermBuilder {
         });
         self
     }
+
+    pub fn with_sparse_console_no_bg(mut self, font_index: usize, width: i32, height: i32) -> Self {
+        let mut features = HashSet::new();
+        features.insert(crate::SparseConsoleFeatures::WithoutBackground);
+        self.layers.push(TerminalLayer::Sparse {
+            font_index,
+            width,
+            height,
+            features,
+        });
+        self
+    }
 }
 
 impl Plugin for BTermBuilder {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.insert_resource(bevy::prelude::Msaa::Sample4);
+        // MSAA is no longer a resource in Bevy 0.16, it's configured per camera
         if self.with_diagnostics {
-            app.add_plugins(FrameTimeDiagnosticsPlugin);
+            app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
         if self.log_diagnostics {
             app.add_plugins(LogDiagnosticsPlugin::default());

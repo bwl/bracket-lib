@@ -21,6 +21,7 @@ pub(crate) struct SparseConsole {
     back_end: Option<Box<dyn SparseConsoleBackend>>,
     clipping: Option<Rect>,
     mouse_chars: (i32, i32),
+    font_dimensions: (f32, f32),
 }
 
 impl SparseConsole {
@@ -33,6 +34,7 @@ impl SparseConsole {
             back_end: None,
             clipping: None,
             mouse_chars: (0, 0),
+            font_dimensions: (8.0, 8.0),
         }
     }
 
@@ -52,6 +54,7 @@ impl SparseConsole {
                 self.width,
                 self.height,
             );
+            self.font_dimensions = fonts[self.font_index].font_height_pixels;
             self.back_end = Some(Box::new(back_end));
         } else {
             let back_end = SparseBackendNoBackground::new(
@@ -63,6 +66,7 @@ impl SparseConsole {
                 self.width,
                 self.height,
             );
+            self.font_dimensions = fonts[self.font_index].font_height_pixels;
             self.back_end = Some(Box::new(back_end));
         }
     }
@@ -298,7 +302,8 @@ impl ConsoleFrontEnd for SparseConsole {
     }
 
     fn set_mouse_position(&mut self, pos: (f32, f32), scaler: &ScreenScaler) {
-        self.mouse_chars = scaler.calc_mouse_position(pos, self.width, self.height);
+        self.mouse_chars =
+            scaler.calc_mouse_position(pos, self.width, self.height, self.font_dimensions);
     }
 
     fn get_font_index(&self) -> usize {

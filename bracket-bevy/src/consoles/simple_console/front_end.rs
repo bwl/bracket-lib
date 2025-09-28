@@ -23,18 +23,27 @@ pub(crate) struct SimpleConsole {
     back_end: Option<Box<dyn SimpleConsoleBackend>>,
     clipping: Option<Rect>,
     mouse_chars: (i32, i32),
+    font_dimensions: (f32, f32),
 }
 
 impl SimpleConsole {
     pub fn new(font_index: usize, width: i32, height: i32) -> Self {
+        let mut terminal = vec![TerminalGlyph::default(); (width * height) as usize];
+        // Explicitly initialize all glyphs to spaces with black background
+        for glyph in terminal.iter_mut() {
+            glyph.glyph = 32;
+            glyph.background = [0.0, 0.0, 0.0, 1.0];
+            glyph.foreground = [1.0, 1.0, 1.0, 1.0];
+        }
         Self {
             font_index,
             width,
             height,
-            terminal: vec![TerminalGlyph::default(); (width * height) as usize],
+            terminal,
             back_end: None,
             clipping: None,
             mouse_chars: (0, 0),
+            font_dimensions: (8.0, 8.0),
         }
     }
 
@@ -54,6 +63,7 @@ impl SimpleConsole {
                 self.width,
                 self.height,
             );
+            self.font_dimensions = fonts[self.font_index].font_height_pixels;
             self.back_end = Some(Box::new(back_end));
         } else {
             let back_end = SimpleBackendNoBackground::new(
@@ -65,6 +75,7 @@ impl SimpleConsole {
                 self.width,
                 self.height,
             );
+            self.font_dimensions = fonts[self.font_index].font_height_pixels;
             self.back_end = Some(Box::new(back_end));
         }
     }
@@ -120,15 +131,20 @@ impl ConsoleFrontEnd for SimpleConsole {
     }
 
     fn cls(&mut self) {
-        self.terminal
-            .iter_mut()
-            .for_each(|c| *c = TerminalGlyph::default());
+        self.terminal.iter_mut().for_each(|c| {
+            c.glyph = 32; // Space character
+            c.foreground = [1.0, 1.0, 1.0, 1.0]; // White
+            c.background = [0.0, 0.0, 0.0, 1.0]; // Opaque black
+        });
     }
 
     fn cls_bg(&mut self, color: RGBA) {
-        self.terminal
-            .iter_mut()
-            .for_each(|c| c.background = color.as_rgba_f32());
+        let bg = color.as_rgba_f32();
+        self.terminal.iter_mut().for_each(|c| {
+            c.glyph = 32; // Space character
+            c.foreground = [1.0, 1.0, 1.0, 1.0];
+            c.background = bg;
+        });
     }
 
     fn set(&mut self, x: i32, y: i32, fg: RGBA, bg: RGBA, glyph: FontCharType) {
@@ -305,7 +321,8 @@ impl ConsoleFrontEnd for SimpleConsole {
     }
 
     fn set_mouse_position(&mut self, pos: (f32, f32), scaler: &ScreenScaler) {
-        self.mouse_chars = scaler.calc_mouse_position(pos, self.width, self.height);
+        self.mouse_chars =
+            scaler.calc_mouse_position(pos, self.width, self.height, self.font_dimensions);
     }
 
     fn get_font_index(&self) -> usize {

@@ -4,6 +4,7 @@ use bracket_bevy::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(ImagePlugin::default_nearest())
         .add_plugins(BTermBuilder::simple_80x50())
         .add_systems(Update, tick)
         .run();

@@ -1,4 +1,7 @@
 // Enable modules based on target architecture
+mod virtual_keycode;
+pub use virtual_keycode::VirtualKeyCode;
+
 #[cfg(feature = "opengl")]
 mod gl_common;
 

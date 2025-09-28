@@ -2,8 +2,11 @@ use super::SimpleConsoleBackend;
 use crate::consoles::{scaler::FontScaler, BracketMesh, ScreenScaler, SimpleConsole};
 use bevy::{
     prelude::*,
-    render::mesh::{Indices, PrimitiveTopology},
-    sprite::MaterialMesh2dBundle,
+    render::{
+        mesh::{Indices, Mesh2d, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+    },
+    sprite::MeshMaterial2d,
 };
 
 pub(crate) struct SimpleBackendNoBackground {
@@ -45,19 +48,37 @@ impl SimpleBackendNoBackground {
         let mut colors: Vec<[f32; 4]> = Vec::with_capacity(capacity * 4);
         let mut indices: Vec<u32> = Vec::with_capacity(capacity * 6);
         let mut index_count = 0;
-        let scale = screen_scaler.calc_step(self.width, self.height);
+        let scale = screen_scaler.calc_step(self.width, self.height, self.font_height_pixels);
         let top_left = screen_scaler.top_left();
 
         // Build the foreground
         for y in 0..self.height {
-            let screen_y = top_left.1 + (y as f32 * scale.1);
+            let screen_y_top = if screen_scaler.is_pixel_perfect_mode() {
+                top_left.1 + (y as f32 * scale.1)
+            } else {
+                (top_left.1 + (y as f32 * scale.1)).round()
+            };
+            let screen_y_bottom = if screen_scaler.is_pixel_perfect_mode() {
+                top_left.1 + ((y + 1) as f32 * scale.1)
+            } else {
+                (top_left.1 + ((y + 1) as f32 * scale.1)).round()
+            };
             let mut idx = ((self.height - 1 - y) * self.width) as usize;
             for x in 0..self.width {
-                let screen_x = top_left.0 + (x as f32 * scale.0);
-                vertices.push([screen_x, screen_y, 0.5]);
-                vertices.push([screen_x + scale.0, screen_y, 0.5]);
-                vertices.push([screen_x, screen_y + scale.1, 0.5]);
-                vertices.push([screen_x + scale.0, screen_y + scale.1, 0.5]);
+                let screen_x_left = if screen_scaler.is_pixel_perfect_mode() {
+                    top_left.0 + (x as f32 * scale.0)
+                } else {
+                    (top_left.0 + (x as f32 * scale.0)).round()
+                };
+                let screen_x_right = if screen_scaler.is_pixel_perfect_mode() {
+                    top_left.0 + ((x + 1) as f32 * scale.0)
+                } else {
+                    (top_left.0 + ((x + 1) as f32 * scale.0)).round()
+                };
+                vertices.push([screen_x_left, screen_y_top, 0.5]);
+                vertices.push([screen_x_right, screen_y_top, 0.5]);
+                vertices.push([screen_x_left, screen_y_bottom, 0.5]);
+                vertices.push([screen_x_right, screen_y_bottom, 0.5]);
                 for _ in 0..4 {
                     normals.push([0.0, 1.0, 0.0]);
                 }
@@ -84,12 +105,15 @@ impl SimpleBackendNoBackground {
                 idx += 1;
             }
         }
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::RENDER_WORLD,
+        );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vertices);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uv);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh.insert_indices(Indices::U32(indices));
         mesh
     }
 }
@@ -106,14 +130,12 @@ impl SimpleConsoleBackend for SimpleBackendNoBackground {
 
     fn spawn(&self, commands: &mut Commands, material: Handle<ColorMaterial>, idx: usize) {
         if let Some(mesh_handle) = &self.mesh_handle {
-            commands
-                .spawn(MaterialMesh2dBundle {
-                    mesh: mesh_handle.clone().into(),
-                    transform: Transform::default(),
-                    material,
-                    ..default()
-                })
-                .insert(BracketMesh(idx));
+            commands.spawn((
+                Mesh2d(mesh_handle.clone()),
+                MeshMaterial2d(material),
+                Transform::default(),
+                BracketMesh(idx),
+            ));
         }
     }
 

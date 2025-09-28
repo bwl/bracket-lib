@@ -3,7 +3,7 @@ use crate::prelude::BTerm;
 use crate::BResult;
 use parking_lot::Mutex;
 
-pub use winit::event::VirtualKeyCode;
+// VirtualKeyCode is now provided by the parent hal module
 
 use pancurses::Window;
 

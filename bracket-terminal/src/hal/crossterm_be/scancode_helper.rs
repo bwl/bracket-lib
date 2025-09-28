@@ -1,4 +1,4 @@
-use winit::event::VirtualKeyCode;
+use crate::hal::VirtualKeyCode;
 
 pub fn virtual_key_code_to_scan(key: VirtualKeyCode) -> u32 {
     match key {
