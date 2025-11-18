@@ -1,8 +1,8 @@
 use crate::{BracketCamera, BracketContext, TerminalScalingMode};
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    mesh::Mesh2d,
     prelude::*,
-    render::mesh::Mesh2d,
     window::WindowResized,
 };
 
@@ -34,7 +34,7 @@ pub(crate) fn update_consoles(
 
 pub(crate) fn replace_meshes(
     mut ctx: ResMut<BracketContext>,
-    mut ev_asset: EventReader<AssetEvent<Mesh>>,
+    mut ev_asset: MessageReader<AssetEvent<Mesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut update_mesh: Query<&mut Mesh2d, With<BracketMesh>>,
 ) {
@@ -75,7 +75,7 @@ pub(crate) fn update_timing(mut ctx: ResMut<BracketContext>, diagnostics: Res<Di
 
 pub(crate) fn window_resize(
     mut context: ResMut<BracketContext>,
-    mut resize_event: EventReader<WindowResized>,
+    mut resize_event: MessageReader<WindowResized>,
     mut scaler: ResMut<ScreenScaler>,
 ) {
     for e in resize_event.read() {

@@ -2,7 +2,7 @@ use crate::{
     consoles::SparseConsole, fonts::FontStore, BTermBuilder, BracketContext, SimpleConsole,
     TerminalLayer,
 };
-use bevy::{asset::UntypedHandle, prelude::*, sprite::ColorMaterial};
+use bevy::{asset::UntypedHandle, prelude::*, sprite_render::ColorMaterial};
 
 use super::image_fixer::ImagesToLoad;
 

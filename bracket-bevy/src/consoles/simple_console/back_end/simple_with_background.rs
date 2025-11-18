@@ -1,11 +1,9 @@
 use crate::consoles::{scaler::FontScaler, BracketMesh, ScreenScaler, SimpleConsole};
 use bevy::{
+    mesh::{Indices, Mesh2d, PrimitiveTopology},
     prelude::*,
-    render::{
-        mesh::{Indices, Mesh2d, PrimitiveTopology},
-        render_asset::RenderAssetUsages,
-    },
-    sprite::MeshMaterial2d,
+    render::render_asset::RenderAssetUsages,
+    sprite_render::MeshMaterial2d,
 };
 
 use super::SimpleConsoleBackend;
