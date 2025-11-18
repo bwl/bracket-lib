@@ -9,7 +9,7 @@ use crate::{
 };
 use bevy::{
     prelude::{Assets, Commands, Handle, Mesh},
-    sprite::ColorMaterial,
+    sprite_render::ColorMaterial,
 };
 use bracket_color::prelude::RGBA;
 use bracket_geometry::prelude::Point;

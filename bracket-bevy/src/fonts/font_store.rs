@@ -1,6 +1,6 @@
 use bevy::{
     prelude::{Handle, Image},
-    sprite::ColorMaterial,
+    sprite_render::ColorMaterial,
 };
 
 /// Stores handles to the components of a font, along with its glyph settings.

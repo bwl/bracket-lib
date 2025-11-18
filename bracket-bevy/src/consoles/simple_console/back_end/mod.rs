@@ -5,7 +5,7 @@ use crate::consoles::ScreenScaler;
 use super::SimpleConsole;
 use bevy::{
     prelude::{Assets, Commands, Handle, Mesh},
-    sprite::ColorMaterial,
+    sprite_render::ColorMaterial,
 };
 pub(crate) use simple_no_background::*;
 pub(crate) use simple_with_background::*;

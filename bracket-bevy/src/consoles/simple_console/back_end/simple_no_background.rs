@@ -1,12 +1,10 @@
 use super::SimpleConsoleBackend;
 use crate::consoles::{scaler::FontScaler, BracketMesh, ScreenScaler, SimpleConsole};
 use bevy::{
+    asset::RenderAssetUsages,
+    mesh::{Indices, PrimitiveTopology},
     prelude::*,
-    render::{
-        mesh::{Indices, Mesh2d, PrimitiveTopology},
-        render_asset::RenderAssetUsages,
-    },
-    sprite::MeshMaterial2d,
+    sprite_render::MeshMaterial2d,
 };
 
 pub(crate) struct SimpleBackendNoBackground {

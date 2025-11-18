@@ -2,7 +2,6 @@ use crate::{BracketCamera, BracketContext, TerminalScalingMode};
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    render::mesh::Mesh2d,
     window::WindowResized,
 };
 
@@ -34,7 +33,7 @@ pub(crate) fn update_consoles(
 
 pub(crate) fn replace_meshes(
     mut ctx: ResMut<BracketContext>,
-    mut ev_asset: EventReader<AssetEvent<Mesh>>,
+    mut ev_asset: MessageReader<AssetEvent<Mesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut update_mesh: Query<&mut Mesh2d, With<BracketMesh>>,
 ) {
@@ -75,7 +74,7 @@ pub(crate) fn update_timing(mut ctx: ResMut<BracketContext>, diagnostics: Res<Di
 
 pub(crate) fn window_resize(
     mut context: ResMut<BracketContext>,
-    mut resize_event: EventReader<WindowResized>,
+    mut resize_event: MessageReader<WindowResized>,
     mut scaler: ResMut<ScreenScaler>,
 ) {
     for e in resize_event.read() {
@@ -117,7 +116,7 @@ pub(crate) fn update_mouse_position(
     if let Some(screen_pos) = wnd.cursor_position() {
         let window_size = Vec2::new(wnd.width(), wnd.height());
         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-        let ndc_to_world = camera_transform.compute_matrix() * camera.clip_from_view().inverse();
+        let ndc_to_world = camera_transform.to_matrix() * camera.clip_from_view().inverse();
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
         let world_pos: Vec2 = world_pos.truncate();
 
